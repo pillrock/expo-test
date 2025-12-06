@@ -1,110 +1,125 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useState } from 'react';
-import { Button, StyleSheet, Switch, Text, View } from 'react-native';
-import io from 'socket.io-client';
-
-// Replace with your computer's IP address if running on physical device
-// For Android Emulator, 10.0.2.2 is usually localhost
-const SOCKET_URL = 'http://192.168.1.8:3000'; 
+import { StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { useTransaction } from './TransactionContext';
+import { ThemedText } from './themed-text';
 
 export default function TTSManager() {
   const [isEnabled, setIsEnabled] = useState(true);
-  const [lastMessage, setLastMessage] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const { lastTransaction } = useTransaction();
+  const [displayMessage, setDisplayMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const socket = io(SOCKET_URL);
+    if (lastTransaction) {
+      const speechText = `Đã nhận ${lastTransaction.amount.toLocaleString()} đồng`;
+      
+      setDisplayMessage(speechText);
+      console.log("TTS Triggered:", speechText);
 
-    socket.on('connect', () => {
-      console.log('Connected to server');
-      setIsConnected(true);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server');
-      setIsConnected(false);
-    });
-
-    socket.on('tts-message', (data: { text: string }) => {
-      console.log('Received TTS message:', data);
-      setLastMessage(data.text);
       if (isEnabled) {
-        speak(data.text);
+        speak(speechText);
       }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [isEnabled]);
+    }
+  }, [lastTransaction]);
 
   const speak = (text: string) => {
     Speech.speak(text, {
-      language: 'vi-VN', // Vietnamese
-      pitch: 1.0,
-      rate: 1.0,
+      language: 'vi-VN', 
+      pitch: 0.9,
+      rate: 1.1,
     });
   };
 
   const toggleSwitch = () => setIsEnabled(previousState => !previousState);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.status}>
-        Status: {isConnected ? 'Connected' : 'Disconnected'}
-      </Text>
-      
-      <View style={styles.row}>
-        <Text>Enable TTS:</Text>
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+         <View style={styles.titleWrapper}>
+          <Ionicons name="chatbubble-ellipses-outline" size={20} color="#E0E0E0" style={{marginRight: 8}} />
+          <ThemedText type="defaultSemiBold" style={{color: '#E0E0E0'}}>Text to Speech</ThemedText>
+        </View>
         <Switch
-          trackColor={{ false: "#767577", true: "#81b0ff" }}
-          thumbColor={isEnabled ? "#f5dd4b" : "#f4f3f4"}
+          trackColor={{ false: "#3e3e3e", true: "#1565C0" }}
+          thumbColor={isEnabled ? "#2196F3" : "#f4f3f4"}
+          ios_backgroundColor="#3e3e3e"
           onValueChange={toggleSwitch}
           value={isEnabled}
         />
       </View>
 
-      {lastMessage && (
-        <View style={styles.messageContainer}>
-          <Text style={styles.label}>Last Message:</Text>
-          <Text style={styles.message}>{lastMessage}</Text>
-          <Button title="Replay" onPress={() => speak(lastMessage)} />
+      {displayMessage ? (
+        <View style={styles.messageBubble}>
+          <View style={styles.messageHeader}>
+             <ThemedText style={styles.messageLabel}>Tin nhắn cuối:</ThemedText>
+             <TouchableOpacity onPress={() => speak(displayMessage)} hitSlop={10}>
+                <Ionicons name="volume-high-outline" size={20} color="#2196F3" />
+             </TouchableOpacity>
+          </View>
+          <ThemedText style={styles.messageText}>{displayMessage}</ThemedText>
         </View>
+      ) : (
+         <View style={styles.emptyContainer}>
+            <ThemedText style={styles.emptyText}>Đang chờ giao dịch...</ThemedText>
+         </View>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    margin: 10,
+export const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#1E1E1E',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#333',
   },
-  status: {
-    marginBottom: 10,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  row: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  messageContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#fff',
-    borderRadius: 5,
+  titleWrapper: {
+     flexDirection: 'row',
+     alignItems: 'center',
   },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: 5,
+  messageBubble: {
+    backgroundColor: '#2C2C2C',
+    padding: 12,
+    borderRadius: 12,
+    borderTopLeftRadius: 0,
   },
-  message: {
-    marginBottom: 10,
+  messageHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+  },
+  messageLabel: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '600',
+  },
+  messageText: {
     fontSize: 16,
+    color: '#E0E0E0',
+    lineHeight: 24,
   },
+  emptyContainer: {
+      padding: 10,
+      alignItems: 'center',
+  },
+  emptyText: {
+      color: '#666',
+      fontSize: 14,
+      fontStyle: 'italic',
+  }
 });

@@ -1,112 +1,212 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { Transaction, useTransaction } from '@/components/TransactionContext';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
+import { Alert, FlatList, ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-export default function TabTwoScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
+export default function ExploreScreen() {
+  const { transactions, removeTransaction, clearTransactions } = useTransaction();
+
+  const totalAmount = useMemo(() => {
+    return transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  }, [transactions]);
+
+  const handleRemove = (id: string) => {
+    Alert.alert(
+      "Xác nhận",
+      "Bạn có chắc muốn xóa giao dịch này?",
+      [
+        { text: "Hủy", style: "cancel" },
+        { text: "Xóa", style: "destructive", onPress: () => removeTransaction(id) }
+      ]
+    );
+  };
+
+  const handleClearAll = () => {
+    Alert.alert(
+      "Cảnh báo",
+      "Bạn có chắc muốn xóa TẤT CẢ lịch sử giao dịch?",
+      [
+        { text: "Hủy", style: "cancel" },
+        { text: "Xóa tất cả", style: "destructive", onPress: clearTransactions }
+      ]
+    );
+  };
+
+  const formatTime = (timeString: string) => {
+    try {
+        const date = new Date(timeString);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return timeString;
+        
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+
+        return `${hours}:${minutes}:${seconds} - ${day}/${month}/${year}`;
+    } catch (e) {
+        return timeString;
+    }
+  };
+
+  const renderItem: ListRenderItem<Transaction> = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardLeft}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="wallet-outline" size={24} color="#4CAF50" />
+          </View>
+          <View style={styles.contentContainer}>
+            <ThemedText style={styles.amount}>
+                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.amount)}
             </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+            <ThemedText style={styles.time}>{formatTime(item.time)}</ThemedText>
+            <ThemedText style={styles.description} numberOfLines={2}>
+            {item.content}
+            </ThemedText>
+            {item.gateway && <ThemedText style={styles.gateway}>{item.gateway}</ThemedText>}
+          </View>
+      </View>
+      
+      <TouchableOpacity onPress={() => handleRemove(item.id)} style={styles.deleteButton} hitSlop={10}>
+          <Ionicons name="trash-outline" size={20} color="#FF5252" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <ThemedView style={styles.header}>
+        <View>
+            <ThemedText type="title" style={{color: '#ECEDEE'}}>Lịch sử giao dịch</ThemedText>
+            <ThemedText style={styles.subtitle}>Tổng thu: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount)}</ThemedText>
+        </View>
+        {transactions.length > 0 && (
+            <TouchableOpacity onPress={handleClearAll} style={styles.clearAllButton}>
+                <Ionicons name="trash-bin-outline" size={20} color="#FF5252" />
+            </TouchableOpacity>
+        )}
+      </ThemedView>
+
+      {transactions.length > 0 ? (
+        <FlatList
+          data={transactions}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={64} color="#444" />
+            <ThemedText style={styles.emptyText}>Chưa có giao dịch nào</ThemedText>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: '#151718',
+    paddingTop: 60,
   },
-  titleContainer: {
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
+  subtitle: {
+    fontSize: 16,
+    color: '#4CAF50',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  clearAllButton: {
+      padding: 8,
+      backgroundColor: 'rgba(255, 82, 82, 0.1)',
+      borderRadius: 8,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  cardLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#2A2A2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  contentContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  amount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 2,
+  },
+  time: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 4,
+    fontFamily: 'Courier', // Monospace for numbers often looks better
+  },
+  description: {
+    fontSize: 14,
+    color: '#ECEDEE',
+    marginBottom: 2,
+  },
+  gateway: {
+      fontSize: 10,
+      color: '#666',
+      textTransform: 'uppercase',
+      fontWeight: '600',
+  },
+  deleteButton: {
+      padding: 8,
+  },
+  emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: -60,
+  },
+  emptyText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: '#666',
+  }
 });

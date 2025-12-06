@@ -1,22 +1,28 @@
+import { CodeGenerator } from '@/components/CodeGenerator';
+import { ServerConnection } from '@/components/ServerConnection';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import TTSManager from '@/components/TTSManager';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">TTS Webhook App</ThemedText>
+        <ThemedText type="title" style={{color: '#ECEDEE'}}>kienvu.dev</ThemedText>
       </ThemedView>
       
-      <View style={styles.contentContainer}>
+      <ScrollView style={styles.contentContainer}>
         <ThemedText style={styles.description}>
-          This app listens for webhook events from the server and converts text to speech.
+          Bản quyền thuộc về kienvu
         </ThemedText>
         
+        <ServerConnection />
+        
+        <CodeGenerator />
+
         <TTSManager />
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -26,11 +32,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 60,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#151718',
   },
   titleContainer: {
     marginBottom: 20,
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   contentContainer: {
     flex: 1,
@@ -39,5 +46,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     fontSize: 16,
+    color: '#9BA1A6',
   },
 });
