@@ -1,4 +1,5 @@
 import { CodeGenerator } from '@/components/CodeGenerator';
+import { ForegroundServiceManager } from '@/components/ForegroundServiceManager';
 import { ServerConnection } from '@/components/ServerConnection';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -18,6 +19,8 @@ export default function HomeScreen() {
         </ThemedText>
         
         <ServerConnection />
+        
+        <ForegroundServiceManager />
         
         <CodeGenerator />
 
