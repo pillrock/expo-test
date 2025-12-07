@@ -12,7 +12,7 @@ export default function TTSManager() {
 
   useEffect(() => {
     if (lastTransaction) {
-      const speechText = `Đã nhận ${lastTransaction.amount.toLocaleString()} đồng`;
+      const speechText = `Đã nhận ${lastTransaction.amount} đồng`;
       
       setDisplayMessage(speechText);
       console.log("TTS Triggered:", speechText);
