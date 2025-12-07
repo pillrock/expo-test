@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import io from 'socket.io-client';
 
 export const useForegroundService = () => {
   const [isServiceRunning, setIsServiceRunning] = useState(false);
+  const socketRef = useRef<any>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -13,7 +14,6 @@ export const useForegroundService = () => {
     let unsubscribe: () => void;
     try {
         const notifee = require('@notifee/react-native').default;
-        // Listen for stop events (e.g. from notification button)
         unsubscribe = notifee.onForegroundEvent(({ type, detail }: any) => {
           if (type === 3 && detail.pressAction?.id === 'stop') { // ACTION_PRESS
             stopForegroundService();
@@ -81,6 +81,14 @@ export const useForegroundService = () => {
     try {
       const notifee = require('@notifee/react-native').default;
       await notifee.stopForegroundService();
+      
+      // Cleanup socket
+      if (socketRef.current) {
+          console.log('Stopping service: disconnecting socket...');
+          socketRef.current.disconnect();
+          socketRef.current = null;
+      }
+
       setIsServiceRunning(false);
     } catch (error) {
         console.error('Failed to stop foreground service:', error);
@@ -96,12 +104,22 @@ export const useForegroundService = () => {
             return;
         }
 
+        // Clean up existing socket if any
+        if (socketRef.current) {
+            console.log('Socket already exists, disconnecting old one...');
+            socketRef.current.disconnect();
+            socketRef.current = null;
+        }
+
         const socket = io(serverUrl, {
             transports: ['websocket'],
+            reconnection: true,
         });
+        
+        socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('Background Socket connected!');
+            console.log('Background Socket connected! ID:', socket.id);
             Speech.speak('Đã kết nối máy chủ');
         });
 
@@ -117,8 +135,12 @@ export const useForegroundService = () => {
              }
         });
 
-        socket.on('disconnect', () => {
-            console.log('Background Socket disconnected');
+        socket.on('disconnect', (reason) => {
+            console.log('Background Socket disconnected:', reason);
+        });
+        
+        socket.on('connect_error', (err) => {
+            console.log('Background Socket connect error:', err);
         });
 
     } catch (e) {
