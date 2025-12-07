@@ -27,7 +27,7 @@ export default function TTSManager() {
     Speech.speak(text, {
       language: 'vi-VN', 
       pitch: 0.9,
-      rate: 1.1,
+      rate: 1.0,
     });
   };
 

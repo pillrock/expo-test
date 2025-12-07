@@ -6,7 +6,6 @@ import 'react-native-reanimated';
 import { SocketProvider } from '@/components/SocketContext';
 import { TransactionProvider } from '@/components/TransactionContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -14,7 +13,6 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const { expoPushToken, notification } = usePushNotifications();
   
   // Optional: You can handle notification navigation here if needed
   // console.log("Token in Layout:", expoPushToken);

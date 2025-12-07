@@ -1,4 +1,3 @@
-import notifee, { AndroidImportance } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
 import { useEffect, useState } from 'react';
@@ -9,13 +8,24 @@ export const useForegroundService = () => {
   const [isServiceRunning, setIsServiceRunning] = useState(false);
 
   useEffect(() => {
-    // Listen for stop events (e.g. from notification button)
-    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
-      if (type === 3 && detail.pressAction?.id === 'stop') { // ACTION_PRESS
-        stopForegroundService();
-      }
-    });
-    return unsubscribe;
+    if (Platform.OS !== 'android') return;
+
+    let unsubscribe: () => void;
+    try {
+        const notifee = require('@notifee/react-native').default;
+        // Listen for stop events (e.g. from notification button)
+        unsubscribe = notifee.onForegroundEvent(({ type, detail }: any) => {
+          if (type === 3 && detail.pressAction?.id === 'stop') { // ACTION_PRESS
+            stopForegroundService();
+          }
+        });
+    } catch (e) {
+        console.warn("Notifee module not available:", e);
+    }
+    
+    return () => {
+        if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const startForegroundService = async () => {
@@ -25,6 +35,10 @@ export const useForegroundService = () => {
     }
 
     try {
+      const notifeeModule = require('@notifee/react-native');
+      const notifee = notifeeModule.default;
+      const { AndroidImportance } = notifeeModule;
+
       // 1. Create channel
       const channelId = await notifee.createChannel({
         id: 'sticky_channel',
@@ -53,8 +67,7 @@ export const useForegroundService = () => {
 
       setIsServiceRunning(true);
       
-      // 3. Connect Socket within this context (or ensure existing socket stays alive)
-      // Note: We create a separate socket connection here to ensure it's dedicated to the background service lifecycle
+      // 3. Connect Socket within this context
       await connectBackgroundSocket();
 
     } catch (error) {
@@ -63,7 +76,10 @@ export const useForegroundService = () => {
   };
 
   const stopForegroundService = async () => {
+    if (Platform.OS !== 'android') return;
+
     try {
+      const notifee = require('@notifee/react-native').default;
       await notifee.stopForegroundService();
       setIsServiceRunning(false);
     } catch (error) {
@@ -92,7 +108,6 @@ export const useForegroundService = () => {
         socket.on('payment_received', async (data) => {
              console.log('Background Payment Received:', data);
              // Basic verification if needed, or just speak
-             // If we really want to duplicate logic from TransactionContext:
              const storedCode = await AsyncStorage.getItem('client_code');
              if (storedCode && data.clientCode && data.clientCode === storedCode) {
                  const text = data.text || `Nhận ${data.transaction.transferAmount} đồng`;
