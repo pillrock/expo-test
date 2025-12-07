@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './themed-text';
 
 export function CodeGenerator() {
   const [code, setCode] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isShowCode, setIsShowCode] = useState(false);
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [manualCode, setManualCode] = useState('');
 
   useEffect(() => {
     loadCode();
@@ -39,6 +41,23 @@ export function CodeGenerator() {
     );
   };
 
+  const handleManualSave = () => {
+    if (!manualCode.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mã code');
+      return;
+    }
+    saveCode(manualCode.trim());
+    setIsManualEntry(false);
+    setManualCode('');
+  };
+
+  const handleEditCode = () => {
+    if (code) {
+      setManualCode(code);
+      setIsManualEntry(true);
+    }
+  };
+
   const saveCode = async (newCode: string) => {
     try {
       await AsyncStorage.setItem('client_code', newCode);
@@ -68,7 +87,7 @@ export function CodeGenerator() {
          )}
       </View>
 
-      {code ? (
+      {code && !isManualEntry ? (
         <View>
              <View style={styles.codeRow}>
                 <TouchableOpacity style={styles.codeDisplay} activeOpacity={0.7} onPress={() => {}}>
@@ -80,16 +99,52 @@ export function CodeGenerator() {
                 <TouchableOpacity onPress={() => setIsShowCode(!isShowCode)} style={styles.iconButton}>
                     <Ionicons name={isShowCode ? "eye-off-outline" : "eye-outline"} size={22} color="#888" />
                 </TouchableOpacity>
+
+                <TouchableOpacity onPress={handleEditCode} style={styles.iconButton}>
+                    <Ionicons name="create-outline" size={22} color="#2196F3" />
+                </TouchableOpacity>
                
              </View>
         </View>
       ) : (
         <View style={styles.emptyState}>
-            <ThemedText style={styles.emptyText}>Chưa có mã kết nối</ThemedText>
-            <TouchableOpacity style={styles.createButton} onPress={handleGenerateCode}>
-                <Ionicons name="add-circle-outline" size={20} color="#fff" style={{marginRight: 8}} />
-                <ThemedText style={styles.createButtonText}>Tạo mã mới</ThemedText>
-            </TouchableOpacity>
+            {!isManualEntry ? (
+              <>
+                <ThemedText style={styles.emptyText}>Chưa có mã kết nối</ThemedText>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity style={styles.createButton} onPress={handleGenerateCode}>
+                      <Ionicons name="add-circle-outline" size={20} color="#fff" style={{marginRight: 8}} />
+                      <ThemedText style={styles.createButtonText}>Tạo mã mới</ThemedText>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.manualButton} onPress={() => setIsManualEntry(true)}>
+                      <Ionicons name="keypad-outline" size={20} color="#fff" style={{marginRight: 8}} />
+                      <ThemedText style={styles.manualButtonText}>Nhập mã</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <View style={styles.manualInputContainer}>
+                 <ThemedText style={styles.emptyText}>{code ? 'Chỉnh sửa mã kết nối' : 'Nhập mã kết nối của bạn'}</ThemedText>
+                 <TextInput
+                    style={styles.input}
+                    value={manualCode}
+                    onChangeText={setManualCode}
+                    placeholder="Nhập mã code..."
+                    placeholderTextColor="#666"
+                    keyboardType="default"
+                    autoCapitalize="none"
+                 />
+                 <View style={styles.buttonRow}>
+                    <TouchableOpacity style={[styles.createButton, {backgroundColor: '#4CAF50', flex: 1, marginRight: 8}]} onPress={handleManualSave}>
+                        <ThemedText style={styles.createButtonText}>Lưu</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.manualButton, {backgroundColor: '#444', flex: 1}]} onPress={() => setIsManualEntry(false)}>
+                        <ThemedText style={styles.manualButtonText}>Hủy</ThemedText>
+                    </TouchableOpacity>
+                 </View>
+              </View>
+            )}
         </View>
       )}
     </View>
@@ -175,18 +230,26 @@ const styles = StyleSheet.create({
   emptyState: {
       alignItems: 'center',
       paddingVertical: 10,
+      width: '100%',
   },
   emptyText: {
       color: '#888',
       marginBottom: 12,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    justifyContent: 'center',
+  },
   createButton: {
       flexDirection: 'row',
       backgroundColor: '#2196F3',
       paddingVertical: 12,
-      paddingHorizontal: 24,
+      paddingHorizontal: 16,
       borderRadius: 24,
       alignItems: 'center',
+      justifyContent: 'center',
       shadowColor: '#2196F3',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
@@ -196,6 +259,37 @@ const styles = StyleSheet.create({
   createButtonText: {
       color: '#fff',
       fontWeight: '600',
-      fontSize: 16,
+      fontSize: 14,
+  },
+  manualButton: {
+    flexDirection: 'row',
+    backgroundColor: '#424242',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#555',
+  },
+  manualButtonText: {
+    color: '#E0E0E0',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  manualInputContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  input: {
+    width: '100%',
+    backgroundColor: '#2C2C2C',
+    color: '#FFF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#444',
+    marginBottom: 16,
+    fontSize: 16,
   }
 });
