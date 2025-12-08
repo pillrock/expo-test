@@ -1,200 +1,241 @@
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useSocket } from './SocketContext';
-import { ThemedText } from './themed-text';
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import React, { useEffect, useState } from "react";
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSocket } from "./SocketContext";
+import { useTransaction } from "./TransactionContext";
+import { ThemedText } from "./themed-text";
+
+const FIXED_SERVER_URL = "http://192.168.1.4:3000";
 
 export function ServerConnection() {
-  const [serverUrl, setServerUrl] = useState('http://192.168.1.5:3000');
-  const [isEditing, setIsEditing] = useState(false);
-  const [isShowHost, setIsShowHost] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const { connect, isConnected, connectionStatus } = useSocket();
+  const { clientCode } = useTransaction();
+  const [verificationCode, setVerificationCode] = useState<string>("");
+  const [isCopied, setIsCopied] = useState(false);
+  const { connect, connectionStatus } = useSocket();
+  const [fadeAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    loadServerUrl();
+    connect(FIXED_SERVER_URL);
   }, []);
 
-  const loadServerUrl = async () => {
-    try {
-      const savedUrl = await AsyncStorage.getItem('server_url');
-      if (savedUrl) {
-        setServerUrl(savedUrl);
-        connect(savedUrl);
+  useEffect(() => {
+    if (clientCode) {
+      const codeNum = parseInt(clientCode, 10);
+      if (!isNaN(codeNum)) {
+        setVerificationCode(`CH${codeNum * 365}`);
+      } else {
+        setVerificationCode("");
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-        setIsLoaded(true);
+    } else {
+      setVerificationCode("");
     }
-  };
+  }, [clientCode]);
 
-  const handleSaveAndConnect = async () => {
-    // Basic validation
-    let urlToSave = serverUrl.trim();
-    if (!urlToSave.startsWith('http')) {
-        urlToSave = `http://${urlToSave}`;
-        setServerUrl(urlToSave);
-    }
+  const handleCopy = async () => {
+    if (!verificationCode) return;
+    await Clipboard.setStringAsync(verificationCode);
+    setIsCopied(true);
 
-    try {
-      await AsyncStorage.setItem('server_url', urlToSave);
-      setIsEditing(false);
-      connect(urlToSave);
-    } catch (e) {
-      console.error(e);
-    }
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.ease),
+      }),
+      Animated.delay(1500),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setIsCopied(false));
   };
 
   const getStatusColor = () => {
-      switch (connectionStatus) {
-          case 'connected': return '#4CAF50';
-          case 'connecting': return '#FFC107';
-          case 'error': return '#F44336';
-          default: return '#9E9E9E';
-      }
+    switch (connectionStatus) {
+      case "connected":
+        return "#4CAF50";
+      case "connecting":
+        return "#FFC107";
+      case "error":
+        return "#F44336";
+      default:
+        return "#9E9E9E";
+    }
   };
 
   const getStatusText = () => {
     switch (connectionStatus) {
-        case 'connected': return 'Online';
-        case 'connecting': return 'Connecting...';
-        case 'error': return 'Error';
-        default: return 'Offline';
+      case "connected":
+        return "Máy chủ OK";
+      case "connecting":
+        return "Máy chủ đang kết nối...";
+      case "error":
+        return "Máy chủ thất bại";
+      default:
+        return "Không kết nối";
     }
   };
 
-  if (!isLoaded) return null;
-
   return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.titleWrapper}>
-           <Ionicons name="server-outline" size={20} color="#E0E0E0" style={{marginRight: 8}} />
-           <ThemedText type="defaultSemiBold" style={{color: '#E0E0E0'}}>Server Host</ThemedText>
-        </View>
-        
-        <View style={styles.statusBadge}>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-            <ThemedText style={[styles.statusText, { color: getStatusColor() }]}>{getStatusText()}</ThemedText>
+    <View style={styles.container}>
+      {/* Status Header */}
+      <View style={styles.header}>
+        <View style={styles.statusIndicator}>
+          <View style={[styles.dot, { backgroundColor: getStatusColor() }]} />
+          <ThemedText style={[styles.statusText, { color: getStatusColor() }]}>
+            {getStatusText()}
+          </ThemedText>
         </View>
       </View>
 
-      <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, !isEditing && styles.inputDisabled]}
-            value={serverUrl}
-            onChangeText={setServerUrl}
-            placeholder="Enter server URL (e.g., http://192.168.1.5:3000)"
-            placeholderTextColor="#666"
-            editable={isEditing}
-            autoCapitalize="none"
-            secureTextEntry={!isShowHost}
-          />
-          <TouchableOpacity onPress={() => setIsShowHost(!isShowHost)} style={styles.eyeIcon}>
-              <Ionicons name={isShowHost ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
-          </TouchableOpacity>
-      </View>
+      {/* Verification Code Section */}
+      {verificationCode ? (
+        <View style={styles.verificationCard}>
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={24}
+              color="#4CAF50"
+            />
+          </View>
+          <View style={styles.codeContent}>
+            <ThemedText style={styles.label}>Mã xác thực</ThemedText>
+            <TouchableOpacity
+              style={styles.codeButton}
+              onPress={handleCopy}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.codeText}>
+                {verificationCode}
+              </ThemedText>
+              <Ionicons
+                name={isCopied ? "checkmark" : "copy-outline"}
+                size={18}
+                color="#888"
+              />
+            </TouchableOpacity>
+          </View>
 
-      {isEditing ? (
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveAndConnect}>
-            <ThemedText style={styles.saveButtonText}>Lưu & Kết nối</ThemedText>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#fff" style={{marginLeft: 4}} />
-        </TouchableOpacity>
+          {/* Copied Toast/Badge */}
+          <Animated.View style={[styles.copiedBadge, { opacity: fadeAnim }]}>
+            <ThemedText style={styles.copiedText}>Đã sao chép</ThemedText>
+          </Animated.View>
+        </View>
       ) : (
-        <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
-             <ThemedText style={styles.editButtonText}>Sửa Host</ThemedText>
-             <Ionicons name="create-outline" size={16} color="#bbb" style={{marginLeft: 4}} />
-        </TouchableOpacity>
+        <View style={styles.emptyCard}>
+          <ThemedText style={styles.emptyText}>
+            Vui lòng nhập mã Client để tạo mã xác thực
+          </ThemedText>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#1E1E1E',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#333',
+  container: {
+    marginBottom: 20,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
     marginBottom: 12,
   },
-  titleWrapper: {
-      flexDirection: 'row',
-      alignItems: 'center',
+  statusIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
-  statusBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#2A2A2A',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-  },
-  statusDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      marginRight: 6,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
   statusText: {
-      fontSize: 12,
-      fontWeight: '600',
+    fontSize: 12,
+    fontWeight: "600",
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    backgroundColor: '#2C2C2C',
-    borderRadius: 12,
+  verificationCard: {
+    backgroundColor: "#1E1E1E",
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: "#333",
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    position: "relative",
+    overflow: "hidden",
   },
-  input: {
+  emptyCard: {
+    padding: 16,
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#666",
+    fontSize: 12,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  codeContent: {
     flex: 1,
-    padding: 12,
-    fontSize: 14,
-    color: '#FFF',
   },
-  inputDisabled: {
-      opacity: 0.7,
+  label: {
+    fontSize: 12,
+    color: "#888",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  eyeIcon: {
-      padding: 10,
+  codeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
   },
-  saveButton: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+  codeText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFF",
+    marginRight: 8,
+    letterSpacing: 1,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+  copiedBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  editButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      paddingVertical: 4,
+  copiedText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "600",
   },
-  editButtonText: {
-      color: '#bbb',
-      fontSize: 14,
-  }
 });
