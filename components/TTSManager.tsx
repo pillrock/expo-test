@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Switch, TouchableOpacity, View } from "react-native";
@@ -9,6 +10,17 @@ export default function TTSManager() {
   const [isEnabled, setIsEnabled] = useState(true);
   const { lastTransaction } = useTransaction();
   const [displayMessage, setDisplayMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Configure audio mode to play even if switch is on silent
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    }).catch((err) => console.warn("Audio mode setup failed", err));
+  }, []);
 
   useEffect(() => {
     if (lastTransaction) {
@@ -23,11 +35,42 @@ export default function TTSManager() {
     }
   }, [lastTransaction]);
 
-  const speak = (text: string) => {
+  const playSound = async () => {
+    try {
+      // Using a generic 'ding' sound URL.
+      // replace with require('@/assets/ding.mp3') if you add a local file.
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/sounds/ding.mp3"),
+        { shouldPlay: true }
+      );
+
+      // Unload sound from memory when finished
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          await sound.unloadAsync();
+        }
+      });
+
+      // Wait a short moment for the sound to be perceived before speaking
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    } catch (error) {
+      console.log("Error playing sound:", error);
+    }
+  };
+
+  const speak = async (text: string) => {
+    // Stop any current speech
+    // if (await Speech.isSpeakingAsync()) {
+    //   Speech.stop();
+    // }
+
+    // Play "Ting Ting" sound
+    await playSound();
+
     Speech.speak(text, {
       language: "vi-VN",
-      pitch: 0.9,
-      rate: 1.0,
+      pitch: 1.0, // Slightly more natural pitch
+      rate: 0.9, // Slightly slower for clarity
     });
   };
 
@@ -109,6 +152,7 @@ export const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderTopLeftRadius: 0,
+    marginTop: 8,
   },
   messageHeader: {
     flexDirection: "row",
