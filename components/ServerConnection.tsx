@@ -12,7 +12,7 @@ import { useSocket } from "./SocketContext";
 import { useTransaction } from "./TransactionContext";
 import { ThemedText } from "./themed-text";
 
-const FIXED_SERVER_URL = "http://192.168.1.4:3000";
+const FIXED_SERVER_URL = "https://e03fd05f5093.ngrok-free.app";
 
 export function ServerConnection() {
   const { clientCode } = useTransaction();
